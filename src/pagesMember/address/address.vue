@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { getMemberAddressApi } from '@/services/address';
+import { deleteMemberAddressByIdApi, getMemberAddressApi } from '@/services/address';
+import { useAddressStore } from '@/stores/modules/address';
 import type { AddressItem } from '@/types/address';
 import { onShow } from '@dcloudio/uni-app';
 import { ref } from 'vue';
@@ -14,6 +15,30 @@ const getMemberAddressData = async () => {
 onShow(() => {
   getMemberAddressData()
 })
+
+//删除地址
+const onDeleteAddress=(id:string)=>{
+  uni.showModal({
+    title:'提示',
+    content:'确定删除该地址吗？',
+    success:async (res)=>{
+      if(res.confirm){
+        // 调用接口删除数据
+        await deleteMemberAddressByIdApi(id)
+        getMemberAddressData()
+      }
+    }
+  })
+}
+
+//选择地址
+const onChangeAddress=(item:AddressItem)=>{
+  console.log("点了");
+  
+  const addressStore= useAddressStore()
+  addressStore.setSelectedAddress(item)
+  uni.navigateBack()
+}
 </script>
 
 <template>
@@ -21,10 +46,10 @@ onShow(() => {
     <!-- 地址列表 -->
     <scroll-view class="scroll-view" scroll-y>
       <view v-if="addressList.length>0" class="address">
-        <view class="address-list">
+        <uni-swipe-action class="address-list">
           <!-- 收货地址项 -->
-          <view class="item" v-for="item in addressList" :key="item.id">
-            <view class="item-content">
+          <uni-swipe-action-item class="item" v-for="item in addressList" :key="item.id">
+            <view class="item-content" @tap="onChangeAddress(item)">
               <view class="user">
                 {{ item.receiver }}
                 <text class="contact">{{ item.contact }}</text>
@@ -35,12 +60,17 @@ onShow(() => {
                 class="edit"
                 hover-class="none"
                 :url="`/pagesMember/address-form/address-form?id=${item.id}`"
+                @tap.stop="()=>{}"
               >
                 修改
               </navigator>
             </view>
-          </view>
-        </view>
+            <!-- 右侧插槽 -->
+            <template #right>
+              <button @tap="onDeleteAddress(item.id)" class="delete-button">删除</button>
+            </template>
+          </uni-swipe-action-item>
+        </uni-swipe-action>
       </view>
       <view v-else class="blank">暂无收货地址</view>
     </scroll-view>

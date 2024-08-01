@@ -2,9 +2,12 @@
 import { getGoodsByIdApi } from '@/services/goods';
 import type { GoodsResult } from '@/types/goods';
 import { onLoad } from '@dcloudio/uni-app';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import AddressPanel from './components/AddressPanel.vue';
 import ServicePanel from './components/ServicePanel.vue';
+import type { SkuPopupEvent, SkuPopupInstance, SkuPopupLocaldata } from '@/components/vk-data-goods-sku-popup/vk-data-goods-sku-popup';
+import { postMemberCartApi } from '@/services/cart';
+import { useAddressStore } from '@/stores/modules/address';
 
 //获取屏幕边界到安全区域距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
@@ -15,6 +18,22 @@ const goods = ref<GoodsResult>()
 const getGoodsByIdData = async () => {
   const res = await getGoodsByIdApi(query.id)
   goods.value = res.result
+  //封装 sku组件所需数据
+  localdata.value = {
+    _id:res.result.id,
+    name:res.result.name,
+    goods_thumb:res.result.mainPictures[0],
+    spec_list:res.result.specs.map(s=>({name:s.name,list:s.values})),
+    sku_list:res.result.skus.map(v=>({
+      _id:v.id,
+      goods_id:res.result.id,
+      goods_name:res.result.name,
+      image:v.picture,
+      price:v.price*100,
+      sku_name_arr:v.specs.map(s=>s.valueName),
+      stock:v.inventory
+    }))
+  }
 }
 
 onLoad(() => {
@@ -40,7 +59,45 @@ const onPopupTap = (type: typeof popupType.value) => {
   popupType.value = type
   popup.value?.open()
 }
+// sku
+const isShowSku = ref(false)
+const skuPopup = ref<SkuPopupInstance>()
+const localdata = ref<SkuPopupLocaldata>()
+enum SkuMode {
+  Both = 1,
+  AddCart = 2,
+  BuyNow = 3
+}
+const mode=ref<SkuMode>(SkuMode.Both)
+const onSkuTap = (val:SkuMode) => {
+  mode.value=val
+  isShowSku.value = true
+}
+const selectArrText=computed(()=>{
+  return skuPopup.value?.selectArr?.join(' ').trim()||'请选择商品规格'
+})
+const addressStore= useAddressStore()
+const userAddresses=computed(()=>{
+  return addressStore.selectedAddress?.fullLocation||
+  // goods.value?.userAddresses.find(item=>item.isDefault)?.fullLocation||
+  '请选择收获地址'
+})
 
+//加入购物车
+const onAddCart= async(ev:SkuPopupEvent)=>{
+  await postMemberCartApi({ skuId: ev._id, count: ev.buy_num })
+  uni.showToast({
+    title:'加入购物车成功',
+    icon:'success'
+  })
+  isShowSku.value=false
+}
+//立即购买
+const onBuyNow= async(ev:SkuPopupEvent)=>{
+  uni.navigateTo({
+    url:`/pagesOrder/create/create?skuId=${ev._id}&count=${ev.buy_num}`
+  })
+}
 </script>
 
 <template>
@@ -74,13 +131,13 @@ const onPopupTap = (type: typeof popupType.value) => {
 
       <!-- 操作面板 -->
       <view class="action">
-        <view class="item arrow">
+        <view class="item arrow" @tap="onSkuTap(SkuMode.Both)">
           <text class="label">选择</text>
-          <text class="text ellipsis"> 请选择商品规格 </text>
+          <text class="text ellipsis"> {{ selectArrText }} </text>
         </view>
         <view class="item arrow" @tap="onPopupTap('address')">
           <text class="label">送至</text>
-          <text class="text ellipsis"> 请选择收获地址 </text>
+          <text class="text ellipsis">{{ userAddresses }}  </text>
         </view>
         <view class="item arrow" @tap="onPopupTap('service')">
           <text class="label">服务</text>
@@ -134,13 +191,13 @@ const onPopupTap = (type: typeof popupType.value) => {
       <button class="icons-button" open-type="contact">
         <text class="icon-handset"></text>客服
       </button>
-      <navigator class="icons-button" url="/pages/cart/cart" open-type="switchTab">
+      <navigator class="icons-button" url="/pages/cart/cart2">
         <text class="icon-cart"></text>购物车
       </navigator>
     </view>
     <view class="buttons">
-      <view class="addcart"> 加入购物车 </view>
-      <view class="buynow"> 立即购买 </view>
+      <view class="addcart" @tap="onSkuTap(SkuMode.AddCart)"> 加入购物车 </view>
+      <view class="buynow" @tap="onSkuTap(SkuMode.BuyNow)"> 立即购买 </view>
     </view>
   </view>
 
@@ -149,6 +206,23 @@ const onPopupTap = (type: typeof popupType.value) => {
     <AddressPanel v-if="popupType === 'address'" @close="popup?.close" />
     <ServicePanel v-if="popupType === 'service'" @close="popup?.close" />
   </uni-popup>
+
+  <!-- sku -->
+  <vk-data-goods-sku-popup
+   ref="skuPopup"
+   v-model="isShowSku"
+   :localdata="localdata"
+   :mode="mode"
+   buy-now-background-color="#28BA9B"
+   add-cart-background-color="#FFA868"
+   :actived-style="{
+      color: '#28BA9B',
+      borderColor: '#28BA9B',
+      backgroundColor: '#E9F8F5'
+   }"
+   @add-cart="onAddCart"
+   @buy-now="onBuyNow"
+   ></vk-data-goods-sku-popup>
 </template>
 
 <style lang="scss">

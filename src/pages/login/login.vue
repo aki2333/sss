@@ -40,9 +40,10 @@ const loginSuccess=(profile:LoginResult)=>{
     icon:'success'
   })
   setTimeout(()=>{
-    uni.switchTab({
-      url:'/pages/my/my',
-    })
+    // uni.switchTab({
+    //   url:'/pages/my/my',
+    // })
+    uni.navigateBack()
   },500)
 
 }

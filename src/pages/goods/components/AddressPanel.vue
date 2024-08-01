@@ -1,8 +1,30 @@
 <script setup lang="ts">
+import { getMemberAddressApi } from '@/services/address';
+import { useAddressStore } from '@/stores/modules/address';
+import type { AddressItem } from '@/types/address';
+import { computed, onMounted, ref } from 'vue';
+
 //子调父
 const emit = defineEmits<{
   close: []
 }>()
+
+//获取收货地址列表
+const addressList =ref<AddressItem[]>([])
+const getMemberAddressData = async () => {
+  // 调用接口获取数据
+  const res = await getMemberAddressApi()
+  addressList.value = res.result
+}
+onMounted(() => {
+  getMemberAddressData()
+})
+const addressStore= useAddressStore()
+const selectedAddress=computed(()=>{
+  return addressStore.selectedAddress||addressList.value.find(item=>item.isDefault)
+})
+const onAddressChange=(item:AddressItem)=>{
+  addressStore.setSelectedAddress(item)}
 </script>
 
 <template>
@@ -13,21 +35,12 @@ const emit = defineEmits<{
     <view class="title">配送至</view>
     <!-- 内容 -->
     <view class="content">
-      <view class="item">
-        <view class="user">李明 13824686868</view>
-        <view class="address">北京市顺义区后沙峪地区安平北街6号院</view>
-        <text class="icon icon-checked"></text>
+      <view class="item" v-for="item in addressList" :key="item.id">
+        <view class="user">{{ item.receiver }} {{ item.contact }}</view>
+        <view class="address">{{ item.fullLocation }}{{ item.address }}</view>
+        <text class="icon" @tap="onAddressChange(item)" :class="{'icon-checked':selectedAddress?.id===item.id,'icon-ring':selectedAddress?.id!==item.id}"></text>
       </view>
-      <view class="item">
-        <view class="user">王东 13824686868</view>
-        <view class="address">北京市顺义区后沙峪地区安平北街6号院</view>
-        <text class="icon icon-ring"></text>
-      </view>
-      <view class="item">
-        <view class="user">张三 13824686868</view>
-        <view class="address">北京市朝阳区孙河安平北街6号院</view>
-        <text class="icon icon-ring"></text>
-      </view>
+
     </view>
     <view class="footer">
       <view class="button primary"> 新建地址 </view>
