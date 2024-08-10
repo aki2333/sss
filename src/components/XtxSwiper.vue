@@ -47,7 +47,7 @@ defineProps<{
 /* 轮播图 */
 .carousel {
   height: 100%;
-  min-height: 280rpx;
+  max-height: 280rpx;
   position: relative;
   overflow: hidden;
   transform: translateY(0);

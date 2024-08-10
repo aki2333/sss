@@ -11,11 +11,12 @@ const loginParams=ref<LoginParams>({
   encryptedData:'',
   iv:''
 })
+// #ifdef MP-WEIXIN
+
 onLoad(async()=>{
   const res = await wx.login()
   loginParams.value.code=res.code
 })
-
 //真实小程序登录，个人账号无法调用
 const onGetphonenumber:UniHelper.ButtonOnGetphonenumber=(ev)=>{
   loginParams.value.encryptedData=ev.detail.encryptedData!
@@ -27,6 +28,9 @@ const login=async()=>{
   const res= await postLoginWxMinApi(loginParams.value)
   loginSuccess(res.result)
 }
+// #endif
+
+
 //模拟小程序登录
 const onloginSimple=async()=>{
   const res=await postLoginWxMinSimpleApi('13569250002')
@@ -58,15 +62,19 @@ const loginSuccess=(profile:LoginResult)=>{
     </view>
     <view class="login">
       <!-- 网页端表单登录 -->
-      <!-- <input class="input" type="text" placeholder="请输入用户名/手机号码" /> -->
-      <!-- <input class="input" type="text" password placeholder="请输入密码" /> -->
-      <!-- <button class="button phone">登录</button> -->
+      <!-- #ifdef H5 -->
+      <input class="input" type="text" placeholder="请输入用户名/手机号码" />
+      <input class="input" type="text" password placeholder="请输入密码" />
+      <button class="button phone">登录</button>
+      <!-- #endif -->
 
       <!-- 小程序端授权登录 -->
+      <!-- #ifdef MP-WEIXIN -->
       <button class="button phone" open-type="getPhoneNumber" @getphonenumber="onGetphonenumber">
         <text class="icon icon-phone"></text>
         手机号快捷登录
       </button>
+      <!-- #endif -->
       <view class="extra">
         <view class="caption">
           <text>其他登录方式</text>
